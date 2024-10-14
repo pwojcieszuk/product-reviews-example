@@ -1,0 +1,83 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: postgres
+    environment:
+      - POSTGRES_DB=${DATABASE}
+      - POSTGRES_USER=${DATABASE_USER}
+      - POSTGRES_PASSWORD=${DATABASE_PASSWORD}
+      - PGPORT=${DATABASE_PORT}
+    ports:
+      - '${DATABASE_PORT}:${DATABASE_PORT}'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7
+    container_name: redis
+    ports:
+      - "${REDIS_PORT}:6379"
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.7.1
+    container_name: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "${ZOOKEPER_PORT}:2181"
+
+  kafka:
+    image: confluentinc/cp-kafka:7.7.1
+    container_name: kafka
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:${ZOOKEPER_PORT}
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:${KAFKA_PORT}
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    ports:
+      - "${KAFKA_PORT}:9092"
+    depends_on:
+      - zookeeper
+
+  product-service:
+    build:
+      context: ./product-service
+      dockerfile: Dockerfile
+    container_name: product-service
+    environment:
+      DATABASE_URL: postgres://user:password@postgres:5432/reviewsdb
+      REDIS_HOST: redis
+      KAFKA_BROKER: kafka:${KAFKA_PORT}
+    volumes:
+      - ./product-service:/app
+      - /app/node_modules
+    ports:
+      - "${PRODUCT_SERVICE_PORT}:3000"
+    depends_on:
+      - postgres
+      - redis
+      - kafka
+
+  review-processing-service:
+    build:
+      context: ./review-processing-service
+      dockerfile: Dockerfile
+    container_name: review-processing-service
+    environment:
+      DATABASE_URL: postgres://user:password@postgres:5432/reviewsdb
+      REDIS_HOST: redis
+      KAFKA_BROKER: kafka:${KAFKA_PORT}
+    volumes:
+      - ./review-processing-service:/app
+      - /app/node_modules
+    ports:
+      - "${REVIEW_SERVICE_PORT}:3000"
+    depends_on:
+      - postgres
+      - redis
+      - kafka
+
+volumes:
+  pgdata:
+    driver: local
