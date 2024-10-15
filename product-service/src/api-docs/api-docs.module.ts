@@ -9,7 +9,7 @@ export class ApiDocsModule {
   static setup(app: INestApplication) {
     const configService = app.get(ConfigService);
     const active = configService.get<boolean>('apiDocs.active');
-    console.log(active);
+
     if (!active) {
       return;
     }
@@ -20,12 +20,6 @@ export class ApiDocsModule {
       .setTitle('Product Service API')
       .setDescription('Product Service API description')
       .setVersion('0.1');
-
-    const tags = [{ name: 'product', description: 'Product operations' }];
-
-    tags.forEach((tag) => {
-      builder.addTag(tag.name, tag.description);
-    });
 
     const config = builder.build();
 

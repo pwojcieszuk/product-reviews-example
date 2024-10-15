@@ -5,6 +5,8 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import configuration from './config/configuration';
 import { ApiDocsModule } from './api-docs/api-docs.module';
+import { ProductModule } from './product/product.module';
+import { ReviewModule } from './review/review.module';
 
 @Module({
   imports: [
@@ -23,12 +25,14 @@ import { ApiDocsModule } from './api-docs/api-docs.module';
         password: configService.get<string>('database.password'),
         database: configService.get<string>('database.database'),
         entities: [],
-        synchronize: true,
+        synchronize: true, // TODO DO NOT USE IN PRODUCTION
         autoLoadEntities: true,
       }),
       inject: [ConfigService],
     }),
     ApiDocsModule,
+    ProductModule,
+    ReviewModule,
   ],
   controllers: [AppController],
   providers: [AppService],
