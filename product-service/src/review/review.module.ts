@@ -28,6 +28,7 @@ import { Product } from 'src/product/entities/product.entity';
         await producer.connect();
         return producer;
       },
+      inject: [ConfigService],
     },
   ],
 })

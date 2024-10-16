@@ -1,21 +1,16 @@
 import { Injectable } from '@nestjs/common';
-import { BullmqService } from '../bullmq/bullmq.service';
 import { RedisService } from '../redis/redis.service';
 import { DatabaseService } from '../database/database.service';
+import { type Job } from 'bullmq';
 
 @Injectable()
 export class ReviewService {
   constructor(
-    private readonly bullmqService: BullmqService,
     private readonly redisService: RedisService,
     private readonly dbService: DatabaseService,
   ) {}
 
-  async handleReviewAdded(review: any) {
-    await this.bullmqService.addReviewJob('review-added', review);
-  }
-
-  async processReviewAdded(job: any) {
+  async processReviewAdded(job: Job) {
     const { productId, rating } = job.data;
 
     // Fetch product data from Redis or DB if cache missed
@@ -40,5 +35,5 @@ export class ReviewService {
     );
   }
 
-  // TODO handleReviewRemoved, handleReviewUpdated, processReviewRemoved, processReviewUpdated
+  // processReviewRemoved, processReviewUpdated
 }

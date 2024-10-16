@@ -28,6 +28,7 @@
     "@nestjs/typeorm": "^10.0.2",
     "bullmq": "^5.20.0",
     "ioredis": "^5.4.1",
+    "kafkajs": "^2.2.4",
     "pg": "^8.13.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
@@ -63,7 +64,10 @@
       "json",
       "ts"
     ],
-    "rootDir": "src",
+    "rootDir": "./",
+    "modulePaths": [
+      "<rootDir>"
+    ],
     "testRegex": ".*\\.spec\\.ts$",
     "transform": {
       "^.+\\.(t|j)s$": "ts-jest"

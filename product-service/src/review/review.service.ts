@@ -6,10 +6,12 @@ import { CreateReviewDto } from './dto/create-review.dto';
 import { UpdateReviewDto } from './dto/update-review.dto';
 import { Product } from 'src/product/entities/product.entity';
 import { Review } from './entities/review.entity';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class ReviewService {
   constructor(
+    private readonly configService: ConfigService,
     @InjectRepository(Review)
     private readonly reviewRepository: Repository<Review>,
     @InjectRepository(Product)
@@ -33,7 +35,7 @@ export class ReviewService {
     await this.reviewRepository.save(review);
 
     await this.emitReviewEvent(
-      'review-added',
+      this.configService.get<string>('kafka.events.reviewAdded'),
       review.id,
       productId,
       review.rating,
@@ -65,7 +67,7 @@ export class ReviewService {
 
     if (ratingChanged) {
       await this.emitReviewEvent(
-        'review-updated',
+        this.configService.get<string>('kafka.events.reviewUpdated'),
         updatedReview.id,
         updatedReview.product.id,
         updatedRating,
@@ -83,11 +85,15 @@ export class ReviewService {
 
     await this.reviewRepository.delete(id);
 
-    await this.emitReviewEvent('review-deleted', id, review.product.id);
+    await this.emitReviewEvent(
+      this.configService.get<string>('kafka.events.reviewDeleted'),
+      id,
+      review.product.id,
+    );
   }
 
   private async emitReviewEvent(
-    eventType: 'review-added' | 'review-updated' | 'review-deleted',
+    eventType: string,
     reviewId: number,
     productId: number,
     rating?: number,
@@ -98,7 +104,7 @@ export class ReviewService {
     }
 
     await this.kafkaProducer.send({
-      topic: 'review-events',
+      topic: this.configService.get<string>('kafka.topic'),
       messages: [
         {
           key: eventType,

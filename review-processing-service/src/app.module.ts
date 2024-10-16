@@ -5,6 +5,7 @@ import { ReviewModule } from './review/review.module';
 import { RedisModule } from './redis/redis.module';
 import { DatabaseModule } from './database/database.module';
 import { BullmqModule } from './bullmq/bullmq.module';
+import { EventProcessingModule } from './event-processing/event-processing.module';
 import configuration from './config/configuration';
 
 @Module({
@@ -24,7 +25,7 @@ import configuration from './config/configuration';
         password: configService.get<string>('database.password'),
         database: configService.get<string>('database.database'),
         entities: [],
-        synchronize: true, // TODO DO NOT USE IN PRODUCTION
+        synchronize: false,
         autoLoadEntities: true,
       }),
       inject: [ConfigService],
@@ -33,6 +34,7 @@ import configuration from './config/configuration';
     RedisModule,
     DatabaseModule,
     BullmqModule,
+    EventProcessingModule,
   ],
 })
 export class AppModule {}
