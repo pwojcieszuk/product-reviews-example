@@ -3,10 +3,10 @@ services:
     image: postgres:16
     container_name: postgres
     environment:
-      - POSTGRES_DB=${DATABASE}
       - POSTGRES_USER=${DATABASE_USER}
       - POSTGRES_PASSWORD=${DATABASE_PASSWORD}
       - PGPORT=${DATABASE_PORT}
+      - POSTGRES_DB=${DATABASE_DB}
     ports:
       - '${DATABASE_PORT}:${DATABASE_PORT}'
     volumes:
@@ -46,18 +46,19 @@ services:
       dockerfile: Dockerfile
     container_name: product-service
     environment:
-      DATABASE_URL: postgres://user:password@postgres:5432/reviewsdb
+      DATABASE_HOST: postgres
       REDIS_HOST: redis
       KAFKA_BROKER: kafka:${KAFKA_PORT}
     volumes:
       - ./product-service:/app
-      - /app/node_modules
     ports:
       - "${PRODUCT_SERVICE_PORT}:3000"
     depends_on:
       - postgres
       - redis
       - kafka
+    env_file:
+      - .env
 
   review-processing-service:
     build:
@@ -65,18 +66,19 @@ services:
       dockerfile: Dockerfile
     container_name: review-processing-service
     environment:
-      DATABASE_URL: postgres://user:password@postgres:5432/reviewsdb
+      DATABASE_HOST: postgres
       REDIS_HOST: redis
       KAFKA_BROKER: kafka:${KAFKA_PORT}
     volumes:
       - ./review-processing-service:/app
-      - /app/node_modules
     ports:
       - "${REVIEW_SERVICE_PORT}:3000"
     depends_on:
       - postgres
       - redis
       - kafka
+    env_file:
+      - .env
 
 volumes:
   pgdata:
