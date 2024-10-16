@@ -69,10 +69,11 @@ services:
       DATABASE_HOST: postgres
       REDIS_HOST: redis
       KAFKA_BROKER: kafka:${KAFKA_PORT}
+      REVIEW_PROCESSING_SERVICE_PORT: 3000
     volumes:
       - ./review-processing-service:/app
     ports:
-      - "${REVIEW_SERVICE_PORT}:3000"
+      - "${REVIEW_PROCESSING_SERVICE_PORT}:3000"
     depends_on:
       - postgres
       - redis
