@@ -1,4 +1,4 @@
-import { Entity, Column, PrimaryGeneratedColumn, ManyToOne } from 'typeorm';
+import { Entity, Column, ManyToOne } from 'typeorm';
 import { IsNotEmpty, IsString, IsNumber, Max, Min } from 'class-validator';
 import { Product } from 'src/product/entities/product.entity';
 import { BaseEntity } from 'src/common/entities/base.entity';

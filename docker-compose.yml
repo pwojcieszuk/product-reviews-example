@@ -8,7 +8,7 @@ services:
       - PGPORT=${DATABASE_PORT}
       - POSTGRES_DB=${DATABASE_DB}
     ports:
-      - '${DATABASE_PORT}:${DATABASE_PORT}'
+      - "${DATABASE_PORT}:5472"
     volumes:
       - pgdata:/var/lib/postgresql/data
 
@@ -32,8 +32,8 @@ services:
     container_name: kafka
     environment:
       KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:${ZOOKEPER_PORT}
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:${KAFKA_PORT}
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
     ports:
       - "${KAFKA_PORT}:9092"
@@ -48,7 +48,8 @@ services:
     environment:
       DATABASE_HOST: postgres
       REDIS_HOST: redis
-      KAFKA_BROKER: kafka:${KAFKA_PORT}
+      KAFKA_BROKER: kafka
+      KAFKA_PORT: 9092
     volumes:
       - ./product-service:/app
     ports:
@@ -68,7 +69,8 @@ services:
     environment:
       DATABASE_HOST: postgres
       REDIS_HOST: redis
-      KAFKA_BROKER: kafka:${KAFKA_PORT}
+      KAFKA_BROKER: kafka
+      KAFKA_PORT: 9092
       REVIEW_PROCESSING_SERVICE_PORT: 3000
     volumes:
       - ./review-processing-service:/app
