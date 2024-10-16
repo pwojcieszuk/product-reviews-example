@@ -1,8 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
 import configuration from './config/configuration';
 import { ApiDocsModule } from './api-docs/api-docs.module';
 import { ProductModule } from './product/product.module';
@@ -34,7 +32,5 @@ import { ReviewModule } from './review/review.module';
     ProductModule,
     ReviewModule,
   ],
-  controllers: [AppController],
-  providers: [AppService],
 })
 export class AppModule {}
