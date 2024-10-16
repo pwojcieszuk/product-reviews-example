@@ -27,6 +27,11 @@ export class Review extends BaseEntity {
   @Max(5)
   rating: number;
 
+  @Column()
+  @IsNotEmpty()
+  @IsNumber()
+  productId: number;
+
   @ManyToOne(() => Product, (product) => product.reviews, {
     onDelete: 'CASCADE',
   })

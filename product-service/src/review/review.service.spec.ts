@@ -6,6 +6,8 @@ import { Review } from './entities/review.entity';
 import { Product } from 'src/product/entities/product.entity';
 import { NotFoundException } from '@nestjs/common';
 import { Producer } from 'kafkajs';
+import { ConfigService } from '@nestjs/config';
+import { mock } from 'node:test';
 
 const mockReviewRepository = {
   create: jest.fn(),
@@ -23,11 +25,16 @@ const mockKafkaProducer = {
   send: jest.fn(),
 };
 
+const mockConfigService = {
+  get: jest.fn((key: string) => key),
+};
+
 describe('ReviewService', () => {
   let service: ReviewService;
   let reviewRepository: Repository<Review>;
   let productRepository: Repository<Product>;
   let kafkaProducer: Producer;
+  let configService: ConfigService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -45,6 +52,10 @@ describe('ReviewService', () => {
           provide: 'KAFKA_PRODUCER',
           useValue: mockKafkaProducer,
         },
+        {
+          provide: ConfigService,
+          useValue: mockConfigService,
+        },
       ],
     }).compile();
 
@@ -56,6 +67,7 @@ describe('ReviewService', () => {
       getRepositoryToken(Product),
     );
     kafkaProducer = module.get<Producer>('KAFKA_PRODUCER');
+    configService = module.get<ConfigService>(ConfigService);
   });
 
   afterEach(() => {
@@ -98,10 +110,10 @@ describe('ReviewService', () => {
 
       // Check if Kafka producer is called with correct event
       expect(kafkaProducer.send).toHaveBeenCalledWith({
-        topic: 'review-events',
+        topic: 'kafka.topic',
         messages: [
           {
-            key: 'review-added',
+            key: 'kafka.events.reviewAdded',
             value: JSON.stringify({
               productId: createReviewDto.productId,
               reviewId: mockReview.id,
@@ -143,6 +155,7 @@ describe('ReviewService', () => {
         surname: 'Doe',
         reviewText: 'Updated review!',
         rating: 4, // Changed rating
+        oldRating: 5, // Original rating
       };
 
       const mockExistingReview = {
@@ -151,7 +164,7 @@ describe('ReviewService', () => {
         surname: 'Doe',
         reviewText: 'Great product!',
         rating: 5, // Original rating
-        product: { id: 1, name: 'Product 1' },
+        productId: 1,
       };
 
       const mockUpdatedReview = {
@@ -175,14 +188,15 @@ describe('ReviewService', () => {
 
       // Check if Kafka producer is called with correct event (since rating changed)
       expect(kafkaProducer.send).toHaveBeenCalledWith({
-        topic: 'review-events',
+        topic: 'kafka.topic',
         messages: [
           {
-            key: 'review-updated',
+            key: 'kafka.events.reviewUpdated',
             value: JSON.stringify({
-              productId: mockUpdatedReview.product.id,
+              productId: mockUpdatedReview.productId,
               reviewId: mockUpdatedReview.id,
               rating: updateReviewDto.rating,
+              oldRating: updateReviewDto.oldRating,
             }),
           },
         ],
@@ -255,7 +269,7 @@ describe('ReviewService', () => {
     it('should successfully delete a review and emit a Kafka event', async () => {
       const mockReview = {
         id: 1,
-        product: { id: 1, name: 'Product 1' },
+        productId: 1,
       };
 
       mockReviewRepository.findOneBy.mockResolvedValue(mockReview); // Review found
@@ -268,12 +282,12 @@ describe('ReviewService', () => {
 
       // Check if Kafka producer is called with correct event
       expect(kafkaProducer.send).toHaveBeenCalledWith({
-        topic: 'review-events',
+        topic: 'kafka.topic',
         messages: [
           {
-            key: 'review-deleted',
+            key: 'kafka.events.reviewDeleted',
             value: JSON.stringify({
-              productId: mockReview.product.id,
+              productId: mockReview.productId,
               reviewId: mockReview.id,
             }),
           },
