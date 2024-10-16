@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ReviewModule } from './review/review.module';
 import { RedisModule } from './redis/redis.module';
 import { DatabaseModule } from './database/database.module';
 import { BullmqModule } from './bullmq/bullmq.module';
@@ -28,6 +29,7 @@ import configuration from './config/configuration';
       }),
       inject: [ConfigService],
     }),
+    ReviewModule,
     RedisModule,
     DatabaseModule,
     BullmqModule,
