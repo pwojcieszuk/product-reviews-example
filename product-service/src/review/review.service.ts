@@ -69,8 +69,9 @@ export class ReviewService {
       await this.emitReviewEvent(
         this.configService.get<string>('kafka.events.reviewUpdated'),
         updatedReview.id,
-        updatedReview.product.id,
+        updatedReview.productId,
         updatedRating,
+        existingReview.rating,
       );
     }
 
@@ -84,11 +85,11 @@ export class ReviewService {
     }
 
     await this.reviewRepository.delete(id);
-
     await this.emitReviewEvent(
       this.configService.get<string>('kafka.events.reviewDeleted'),
       id,
-      review.product.id,
+      review.productId,
+      review.rating,
     );
   }
 
@@ -97,11 +98,14 @@ export class ReviewService {
     reviewId: number,
     productId: number,
     rating?: number,
+    oldRating?: number,
   ) {
-    const eventPayload: any = { productId, reviewId };
-    if (rating !== undefined) {
-      eventPayload.rating = rating;
-    }
+    const eventPayload: any = {
+      productId,
+      reviewId,
+      ...(rating ? { rating } : {}),
+      ...(oldRating ? { oldRating } : {}),
+    };
 
     await this.kafkaProducer.send({
       topic: this.configService.get<string>('kafka.topic'),

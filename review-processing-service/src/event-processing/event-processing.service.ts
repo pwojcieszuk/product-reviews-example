@@ -21,15 +21,29 @@ export class EventProcessingService implements OnModuleInit {
         const eventKey = messagePayload.message.key.toString();
         const eventValue = JSON.parse(messagePayload.message.value.toString());
 
-        if (
-          eventKey ===
-          this.configService.get<string>('kafka.events.reviewAdded')
-        ) {
-          // Enqueue the event as a job in BullMQ
-          await this.bullmqService.addReviewJob(
-            this.configService.get<string>('kafka.events.reviewAdded'),
-            eventValue,
-          );
+        const reviewAddedEvent = this.configService.get<string>(
+          'kafka.events.reviewAdded',
+        );
+        const reviewUpdatedEvent = this.configService.get<string>(
+          'kafka.events.reviewUpdated',
+        );
+        const reviewRemovedEvent = this.configService.get<string>(
+          'kafka.events.reviewDeleted',
+        );
+
+        // Handle review-added event
+        if (eventKey === reviewAddedEvent) {
+          await this.bullmqService.addReviewJob(reviewAddedEvent, eventValue);
+        }
+
+        // Handle review-updated event
+        if (eventKey === reviewUpdatedEvent) {
+          await this.bullmqService.addReviewJob(reviewUpdatedEvent, eventValue);
+        }
+
+        // Handle review-deleted event
+        if (eventKey === reviewRemovedEvent) {
+          await this.bullmqService.addReviewJob(reviewRemovedEvent, eventValue);
         }
       },
     });

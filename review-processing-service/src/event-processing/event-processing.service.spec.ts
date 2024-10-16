@@ -51,7 +51,7 @@ describe('EventProcessingService', () => {
   });
 
   describe('onModuleInit', () => {
-    it('should subscribe to the correct Kafka topic and run consumer', async () => {
+    it('should subscribe to the correct Kafka topic and process review-added event', async () => {
       configServiceMock.get = jest.fn((key: string) => {
         if (key === 'kafka.topic') return 'review-events';
         if (key === 'kafka.events.reviewAdded') return 'review-added';
@@ -64,7 +64,6 @@ describe('EventProcessingService', () => {
         topic: 'review-events',
       });
 
-      // Mock Kafka message with additional required properties
       const messagePayload: EachMessagePayload = {
         topic: 'review-events',
         partition: 0,
@@ -80,19 +79,87 @@ describe('EventProcessingService', () => {
         pause: jest.fn(),
       };
 
-      // Simulate Kafka message processing
       const runConsumerCallback = (kafkaConsumerMock.run as jest.Mock).mock
         .calls[0][0].eachMessage;
       await runConsumerCallback(messagePayload);
 
-      // Check that the correct job was added to BullMQ
       expect(bullmqServiceMock.addReviewJob).toHaveBeenCalledWith(
         'review-added',
         { productId: 1, rating: 5 },
       );
     });
 
-    it('should not enqueue jobs if the event key does not match', async () => {
+    it('should process review-updated event', async () => {
+      configServiceMock.get = jest.fn((key: string) => {
+        if (key === 'kafka.topic') return 'review-events';
+        if (key === 'kafka.events.reviewUpdated') return 'review-updated';
+        return null;
+      });
+
+      await service.onModuleInit();
+
+      const messagePayload: EachMessagePayload = {
+        topic: 'review-events',
+        partition: 0,
+        message: {
+          key: Buffer.from('review-updated'),
+          value: Buffer.from(
+            JSON.stringify({ productId: 1, oldRating: 4, newRating: 5 }),
+          ),
+          offset: '1',
+          headers: {},
+          timestamp: Date.now().toString(),
+          attributes: 0,
+        },
+        heartbeat: jest.fn(),
+        pause: jest.fn(),
+      };
+
+      const runConsumerCallback = (kafkaConsumerMock.run as jest.Mock).mock
+        .calls[0][0].eachMessage;
+      await runConsumerCallback(messagePayload);
+
+      expect(bullmqServiceMock.addReviewJob).toHaveBeenCalledWith(
+        'review-updated',
+        { productId: 1, oldRating: 4, newRating: 5 },
+      );
+    });
+
+    it('should process review-deleted event', async () => {
+      configServiceMock.get = jest.fn((key: string) => {
+        if (key === 'kafka.topic') return 'review-events';
+        if (key === 'kafka.events.reviewDeleted') return 'review-deleted';
+        return null;
+      });
+
+      await service.onModuleInit();
+
+      const messagePayload: EachMessagePayload = {
+        topic: 'review-events',
+        partition: 0,
+        message: {
+          key: Buffer.from('review-deleted'),
+          value: Buffer.from(JSON.stringify({ productId: 1, reviewId: 123 })),
+          offset: '1',
+          headers: {},
+          timestamp: Date.now().toString(),
+          attributes: 0,
+        },
+        heartbeat: jest.fn(),
+        pause: jest.fn(),
+      };
+
+      const runConsumerCallback = (kafkaConsumerMock.run as jest.Mock).mock
+        .calls[0][0].eachMessage;
+      await runConsumerCallback(messagePayload);
+
+      expect(bullmqServiceMock.addReviewJob).toHaveBeenCalledWith(
+        'review-deleted',
+        { productId: 1, reviewId: 123 },
+      );
+    });
+
+    it('should not enqueue jobs if the event key does not match any event', async () => {
       configServiceMock.get = jest.fn((key: string) => {
         if (key === 'kafka.topic') return 'review-events';
         if (key === 'kafka.events.reviewAdded') return 'review-added';
@@ -113,7 +180,7 @@ describe('EventProcessingService', () => {
           attributes: 0,
         },
         heartbeat: jest.fn(),
-        pause: jest.fn(), // Mock the pause function
+        pause: jest.fn(),
       };
 
       const runConsumerCallback = (kafkaConsumerMock.run as jest.Mock).mock

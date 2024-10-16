@@ -155,6 +155,7 @@ describe('ReviewService', () => {
         surname: 'Doe',
         reviewText: 'Updated review!',
         rating: 4, // Changed rating
+        oldRating: 5, // Original rating
       };
 
       const mockExistingReview = {
@@ -163,7 +164,7 @@ describe('ReviewService', () => {
         surname: 'Doe',
         reviewText: 'Great product!',
         rating: 5, // Original rating
-        product: { id: 1, name: 'Product 1' },
+        productId: 1,
       };
 
       const mockUpdatedReview = {
@@ -192,9 +193,10 @@ describe('ReviewService', () => {
           {
             key: 'kafka.events.reviewUpdated',
             value: JSON.stringify({
-              productId: mockUpdatedReview.product.id,
+              productId: mockUpdatedReview.productId,
               reviewId: mockUpdatedReview.id,
               rating: updateReviewDto.rating,
+              oldRating: updateReviewDto.oldRating,
             }),
           },
         ],
@@ -267,7 +269,7 @@ describe('ReviewService', () => {
     it('should successfully delete a review and emit a Kafka event', async () => {
       const mockReview = {
         id: 1,
-        product: { id: 1, name: 'Product 1' },
+        productId: 1,
       };
 
       mockReviewRepository.findOneBy.mockResolvedValue(mockReview); // Review found
@@ -285,7 +287,7 @@ describe('ReviewService', () => {
           {
             key: 'kafka.events.reviewDeleted',
             value: JSON.stringify({
-              productId: mockReview.product.id,
+              productId: mockReview.productId,
               reviewId: mockReview.id,
             }),
           },

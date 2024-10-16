@@ -9,10 +9,6 @@ describe('ReviewService', () => {
   let redisService: RedisService;
   let dbService: DatabaseService;
 
-  const mockBullmqService = {
-    addReviewJob: jest.fn(),
-  };
-
   const mockRedisService = {
     getProductData: jest.fn(),
     updateProductData: jest.fn(),
@@ -84,6 +80,83 @@ describe('ReviewService', () => {
         4.090909090909091,
         11,
       );
+    });
+  });
+
+  describe('processReviewRemoved', () => {
+    it('should recalculate average and update when a review is removed', async () => {
+      const job: Partial<Job> = {
+        data: { productId: 1, rating: 5 },
+      };
+
+      mockRedisService.getProductData.mockResolvedValue({
+        averageRating: 4,
+        reviewCount: 10,
+      });
+
+      await service.processReviewRemoved(job as Job);
+
+      expect(redisService.getProductData).toHaveBeenCalledWith(1);
+      expect(redisService.updateProductData).toHaveBeenCalledWith(
+        1,
+        3.888888888888889,
+        9,
+      );
+    });
+
+    it('should reset average rating to 0 if last review is removed', async () => {
+      const job: Partial<Job> = {
+        data: { productId: 1, rating: 5 },
+      };
+
+      mockRedisService.getProductData.mockResolvedValue({
+        averageRating: 5,
+        reviewCount: 1,
+      });
+
+      await service.processReviewRemoved(job as Job);
+
+      expect(redisService.getProductData).toHaveBeenCalledWith(1);
+      expect(redisService.updateProductData).toHaveBeenCalledWith(1, 0, 0);
+    });
+  });
+
+  describe('processReviewUpdated', () => {
+    it('should recalculate average based on updated review', async () => {
+      const job: Partial<Job> = {
+        data: { productId: 1, oldRating: 4, rating: 5 },
+      };
+
+      mockRedisService.getProductData.mockResolvedValue({
+        averageRating: 4,
+        reviewCount: 10,
+      });
+
+      await service.processReviewUpdated(job as Job);
+
+      expect(redisService.getProductData).toHaveBeenCalledWith(1);
+      expect(redisService.updateProductData).toHaveBeenCalledWith(1, 4.1, 10);
+    });
+
+    it('should handle a situation where Redis cache is empty and fallback to DB', async () => {
+      const job: Partial<Job> = {
+        data: { productId: 1, oldRating: 4, rating: 5 },
+      };
+
+      mockRedisService.getProductData.mockResolvedValue({
+        averageRating: 0,
+        reviewCount: 0,
+      });
+      mockDbService.getProductReviews.mockResolvedValue({
+        averageRating: 4,
+        reviewCount: 10,
+      });
+
+      await service.processReviewUpdated(job as Job);
+
+      expect(redisService.getProductData).toHaveBeenCalledWith(1);
+      expect(dbService.getProductReviews).toHaveBeenCalledWith(1);
+      expect(redisService.updateProductData).toHaveBeenCalledWith(1, 4.1, 10);
     });
   });
 });
