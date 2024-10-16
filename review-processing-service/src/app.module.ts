@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { RedisModule } from './redis/redis.module';
 import { DatabaseModule } from './database/database.module';
 import { BullmqModule } from './bullmq/bullmq.module';
 import configuration from './config/configuration';
@@ -27,6 +28,7 @@ import configuration from './config/configuration';
       }),
       inject: [ConfigService],
     }),
+    RedisModule,
     DatabaseModule,
     BullmqModule,
   ],
