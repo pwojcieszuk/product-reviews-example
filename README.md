@@ -57,6 +57,13 @@ Caching the average rating and review count in Redis allows for faster calculati
 
 The **Review Processing Service** consumes these events and processes them by updating the relevant product's average rating.
 
+### 6. BullMQ for Concurrency
+
+- **Review Event Processing**: Whenever a review is created, updated, or deleted, the Review Processing Service uses BullMQ to queue the review event for processing.
+- **Task Concurrency**: BullMQ allows us to set limits on how many review events can be processed simultaneously by the service, helping us manage system resources effectively.
+- **Retry Mechanism**: If an event fails to process (e.g., due to a temporary issue with the database or Redis), BullMQ automatically retries the job after a short delay.
+- **Persistence**: BullMQ stores jobs temporarily in Redis, ensuring that the service can process the events even after restarts or crashes, although it does not provide long-term durability like Kafka.
+
 ## Workflow
 
 ### 1. **Adding a New Review**
@@ -67,9 +74,9 @@ The **Review Processing Service** consumes these events and processes them by up
 4. The Review Processing Service consumes the `review-created` event:
    - It fetches the current **average rating** and **review count** from Redis.
    - Using the new review's rating and the existing values from Redis, it **dynamically calculates** the new average rating using the formula:
-     \[
-     \text{new\_average} = \frac{(\text{current\_average} \times \text{current\_count}) + \text{new\_rating}}{\text{current\_count} + 1}
-     \]
+  ```
+     new_average = ((current_average * current_count) + new_rating) / (current_count + 1)
+  ```
    - It updates the Redis cache with the new average rating and increments the review count.
    - If Redis data is unavailable or an error occurs, the service falls back to querying PostgreSQL to calculate the new average rating.
 5. The updated average rating is cached in Redis and can be retrieved in future product requests.
@@ -82,9 +89,10 @@ The process for updating or deleting a review follows a similar flow:
 3. The Review Processing Service consumes the event and updates the average rating accordingly:
    - **For updates**: It adjusts the cached average using the difference between the old and new ratings.
    - **For deletions**: It recalculates the average by removing the deleted review’s contribution using the formula:
-     \[
-     \text{new\_average} = \frac{(\text{current\_average} \times \text{current\_count}) - \text{deleted\_rating}}{\text{current\_count} - 1}
-     \]
+  ```
+    new_average = ((current_average * current_count) - deleted_rating) / (current_count - 1)
+
+  ```
 
 ## Redis Caching Strategy
 
@@ -97,13 +105,6 @@ Redis acts as the primary source for average rating calculations. The fallback m
 ### Cache Structure
 - **Key format**: `product:<productId>:rating` and `product:<productId>:reviewCount`
 - **TTL (Optional)**: You can set a time-to-live (TTL) on the Redis keys to avoid stale data persisting indefinitely.
-
-### BullMQ for Concurrency
-
-- **Review Event Processing**: Whenever a review is created, updated, or deleted, the Review Processing Service uses BullMQ to queue the review event for processing.
-- **Task Concurrency**: BullMQ allows us to set limits on how many review events can be processed simultaneously by the service, helping us manage system resources effectively.
-- **Retry Mechanism**: If an event fails to process (e.g., due to a temporary issue with the database or Redis), BullMQ automatically retries the job after a short delay.
-- **Persistence**: BullMQ stores jobs temporarily in Redis, ensuring that the service can process the events even after restarts or crashes, although it does not provide long-term durability like Kafka.
 
 ## Scalability
 
