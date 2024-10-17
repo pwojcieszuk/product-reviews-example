@@ -31,5 +31,6 @@ import { Product } from 'src/product/entities/product.entity';
       inject: [ConfigService],
     },
   ],
+  exports: [ReviewService],
 })
 export class ReviewModule {}

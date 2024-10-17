@@ -5,11 +5,10 @@ import { Redis } from 'ioredis';
 export class RedisService {
   constructor(@Inject('REDIS_CLIENT') private readonly redisClient: Redis) {}
 
-  async getProductData(productId: number) {
+  async getProductAverageRating(
+    productId: number,
+  ): Promise<number | undefined> {
     const data = await this.redisClient.hgetall(`product:${productId}`);
-    return {
-      averageRating: parseFloat(data.averageRating || '0'),
-      reviewCount: parseInt(data.reviewCount || '0', 10),
-    };
+    return data?.averageRating ? parseFloat(data.averageRating) : undefined;
   }
 }
