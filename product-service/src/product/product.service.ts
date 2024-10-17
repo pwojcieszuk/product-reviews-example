@@ -5,12 +5,14 @@ import { Repository } from 'typeorm';
 import { CreateProductDto } from './dto/create-product.dto';
 import { ProductResponseDto } from './dto/product-response.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
+import { RedisService } from 'src/redis/redis.service';
 
 @Injectable()
 export class ProductService {
   constructor(
     @InjectRepository(Product)
     private readonly productRepository: Repository<Product>,
+    private readonly redisService: RedisService,
   ) {}
 
   async create(createProductDto: CreateProductDto): Promise<Product> {
@@ -59,15 +61,48 @@ export class ProductService {
     }
   }
 
-  private mapProductToResponseDto(product: Product): ProductResponseDto {
-    // TODO provide the average rating if available
+  // Helper method to fetch the average rating of a product directly from db
+  // This method is used as a fallback when Redis cache is empty
+  // TODO this is just a proof of concept that shows we need a fallback for cache
+  // Better strategy would be to persist the average rating in the database
+  // but updating it every time a review is added or removed is a performance risk
+  // and proper implementation would require a more complex solution
+  // like a separate service that updates the average rating periodically
+  // for the sake of proof of concept we will keep this method as is for now
+  private async getProductAverageRating(productId: number): Promise<number> {
+    const result = await this.productRepository
+      .createQueryBuilder('review')
+      .select('AVG(review.rating)', 'averageRating')
+      .addSelect('COUNT(review.id)', 'reviewCount')
+      .where('review.productId = :productId', { productId })
+      .getRawOne();
+
+    return parseFloat(result.averageRating) || 0;
+  }
+
+  private async mapProductToResponseDto(
+    product: Product,
+  ): Promise<ProductResponseDto> {
+    let averageRating: number | undefined;
+    try {
+      const productData = await this.redisService.getProductData(product.id);
+      averageRating = productData.averageRating;
+    } catch (error) {
+      // Ignore Redis errors and return undefined average rating
+      console.error('Failed to fetch product data from Redis', error);
+    }
+
+    if (averageRating === undefined) {
+      // Fallback to the average rating from the database
+      averageRating = await this.getProductAverageRating(product.id);
+    }
 
     return {
       id: product.id,
       name: product.name,
       description: product.description,
       price: product.price,
-      // averageRating,
+      averageRating,
     };
   }
 }

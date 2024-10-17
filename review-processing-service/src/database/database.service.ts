@@ -9,7 +9,7 @@ export class DatabaseService {
     @InjectRepository(Review) private reviewRepository: Repository<Review>,
   ) {}
 
-  async getProductReviews(
+  async getProductReviewsStats(
     productId: number,
   ): Promise<{ averageRating: number; reviewCount: number }> {
     const result = await this.reviewRepository
