@@ -119,6 +119,73 @@ The Review Processing Service is designed to be horizontally scalable. Multiple 
 - Distribution of reviev processing across multiple instances of Review Processing Service can potentially lead to race conditions in calculating most recent average (event ordering and consistency in distributed systems). In current implementation this is not taken into account - in case of reviews averages potential delay is considered as acceptable.
 
 ## Installation
-TODO
 
+To run the app:
 
+1. Install Docker and docker-compose (https://docs.docker.com/compose/install/)
+2. Copy `.env-example` into `.env`, update values if needed.
+2. Run `docker compose up -d` in the root directory.
+
+If `API_DOCS_ACTIVE` environment variable is set to true, Product service API can be explored and tested under the url defined by `API_DOCS_PATH` (defaults to `http://localhost:3000/api).
+
+## Configuration
+
+To run the application, you'll need to configure the environment variables by copying the settings from the provided `.env.example` file into a new `.env` file in the root directory of the project. This configuration is shared by both the `Product Service` and the `Review Processing Service`.
+
+You can copy the file using the following command:
+
+```bash
+cp .env.example .env
+```
+
+| Variable                         | Description                                                                                   | Default Value      |
+|-----------------------------------|-----------------------------------------------------------------------------------------------|--------------------|
+| `DATABASE_USER`                   | The username for accessing the PostgreSQL database.                                            | `user`             |
+| `DATABASE_PASSWORD`               | The password for the PostgreSQL database user.                                                 | `password`         |
+| `DATABASE_DB`                     | The name of the PostgreSQL database used by the services.                                      | `reviewsdb`        |
+| `DATABASE_PORT`                   | The port on which the PostgreSQL database is running.                                          | `5432`             |
+| `DATABASE_HOST`                   | The hostname or IP address of the PostgreSQL database.                                         | `postgres`         |
+| `PRODUCT_SERVICE_PORT`            | The port where the Product Service will be exposed.                                            | `3000`             |
+| `REVIEW_PROCESSING_SERVICE_PORT`  | The port where the Review Processing Service will be exposed.                                  | `3001`             |
+| `REDIS_PORT`                      | The port on which Redis is running.                                                           | `6379`             |
+| `REDIS_HOST`                      | The hostname or IP address of the Redis instance.                                              | `redis`            |
+| `KAFKA_PORT`                      | The port on which the Kafka broker is running.                                                 | `9092`             |
+| `KAFKA_BROKER`                    | The hostname or IP address of the Kafka broker.                                                | `kafka`            |
+| `KAFKA_TOPIC`                     | The Kafka topic used to handle review-related events.                                          | `review-events`    |
+| `API_DOCS_PATH`                   | The path where the Swagger API documentation will be available.                                | `api`              |
+| `API_DOCS_ACTIVE`                 | Set to `true` to enable the Swagger API documentation. **Do not use in production environments**. | `false`            |
+
+## Important Notes and Areas for Improvement
+
+### Assumptions and Considerations
+
+While building this application, I worked with the assumption that it is not yet production-ready. Some parts of the code have been marked with comments indicating areas that should be addressed when moving to production.
+
+### Things to Improve
+
+- **Monorepo Structure**: Using a monorepo (e.g., `pnpm workspace`, `nx` or Nest's monorepo approach) or organizing apps in Git submodules could be a future improvement. In a real-world scenario, this would be a decision to make after the app grows, but it's not necessary from the start.
+  
+- **API Security**: Currently, there is no token-based authentication or other security mechanisms. The API is essentially open, and for production, proper security layers (e.g., JWT, OAuth) would be essential.
+
+- **.env File for All Apps**: At present, a single `.env` file is shared across all apps for convenience. In a truly distributed environment, this would likely need to be separated per service for better scalability and security.
+
+- **Lack of Pagination**: The REST API lacks pagination or other limiting solutions. For scalability and performance, adding pagination would be necessary when handling larger datasets.
+
+- **Product Average Rating Persistence**: 
+  - Currently, product average ratings are **not persisted in the database**. My reasoning:
+    1. This information is already present and can be calculated from the existing reviews using PostgreSQL's `AVG()` function.
+    2. Persisting the average rating in the database would require frequent updates and could strain the database.
+    3. A more efficient solution in this case is to store the review averages in **Redis** and, in cases of cache misses, calculate them from the database.
+  - In a real-world scenario, I would discuss this approach with the team to ensure we make the best decision for performance and data integrity.
+
+- **Performance Optimizations**: 
+  - Currently, I rely on calculating the average from all reviews in the database when updating the review count. A more performant approach would be to **persist the average rating** in the database but only update it periodically to avoid frequent write operations. This would optimize the application for handling a larger volume of reviews.
+  
+- **Package Refactoring**: Some functionalities, such as the **Redis service**, could be extracted into separate packages or libraries to improve reusability across different services.
+
+- **E2E Integration Tests**: For better test isolation and modularity, I would recommend creating a **separate app for end-to-end (E2E) integration tests**. This approach allows for more flexibility in simulating real-world environments and improves the scalability of the testing infrastructure.
+
+- **Scalable Container Orchestration**: 
+  - While Docker Compose is used for local development due to familiarity and ease of use, it **might be not suitable for production environments** where scalability is critical.
+  - In a production environment, it would be better to use a more scalable container orchestration platform such as **K3s** or **Kubernetes**. These platforms offer better tools for managing, scaling, and monitoring distributed services in real-time.
+  - For local development, Docker Compose remains an effective and convenient choice.
