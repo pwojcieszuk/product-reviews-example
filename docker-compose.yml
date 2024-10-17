@@ -5,18 +5,20 @@ services:
     environment:
       - POSTGRES_USER=${DATABASE_USER}
       - POSTGRES_PASSWORD=${DATABASE_PASSWORD}
-      - PGPORT=${DATABASE_PORT}
+      - PGPORT=5432
       - POSTGRES_DB=${DATABASE_DB}
     ports:
-      - "${DATABASE_PORT}:5432"
+      - "${DATABASE_PORT}:5432" # External access port
     volumes:
       - pgdata:/var/lib/postgresql/data
+    networks: 
+      - internal
 
   redis:
     image: redis:7
     container_name: redis
-    ports:
-      - "${REDIS_PORT}:6379"
+    networks: 
+      - internal
 
   zookeeper:
     image: confluentinc/cp-zookeeper:7.7.1
@@ -24,8 +26,8 @@ services:
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
-    ports:
-      - "${ZOOKEPER_PORT}:2181"
+    networks: 
+      - internal
 
   kafka:
     image: confluentinc/cp-kafka:7.7.1
@@ -35,10 +37,10 @@ services:
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-    ports:
-      - "${KAFKA_PORT}:9092"
     depends_on:
       - zookeeper
+    networks:
+      - internal
 
   product-service:
     build:
@@ -53,36 +55,46 @@ services:
     volumes:
       - ./product-service:/app
     ports:
-      - "${PRODUCT_SERVICE_PORT}:3000"
+      - "${PRODUCT_SERVICE_PORT}:3000" # External access port
     depends_on:
       - postgres
       - redis
       - kafka
     env_file:
       - .env
+    networks:
+      - internal
 
   review-processing-service:
     build:
       context: ./review-processing-service
       dockerfile: Dockerfile
-    container_name: review-processing-service
+    # container_name: review-processing-service
     environment:
       DATABASE_HOST: postgres
       REDIS_HOST: redis
       KAFKA_BROKER: kafka
       KAFKA_PORT: 9092
-      REVIEW_PROCESSING_SERVICE_PORT: 3000
+      REVIEW_PROCESSING_SERVICE_PORT: ${REVIEW_PROCESSING_SERVICE_PORT}
     volumes:
       - ./review-processing-service:/app
     ports:
-      - "${REVIEW_PROCESSING_SERVICE_PORT}:3000"
+      - "0:${REVIEW_PROCESSING_SERVICE_PORT}" # Dynamic external access port
     depends_on:
       - postgres
       - redis
       - kafka
     env_file:
       - .env
+    deploy:
+      replicas: 2
+    networks:
+      - internal
 
 volumes:
   pgdata:
     driver: local
+
+networks:
+  internal:
+    driver: bridge

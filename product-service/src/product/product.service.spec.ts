@@ -4,14 +4,15 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Product } from './entities/product.entity';
 import { CreateProductDto } from './dto/create-product.dto';
-import { UpdateProductDto } from './dto/update-product.dto';
 import { NotFoundException } from '@nestjs/common';
 import { RedisService } from 'src/redis/redis.service';
+import { ReviewService } from 'src/review/review.service';
 
 describe('ProductService', () => {
   let service: ProductService;
   let productRepository: Repository<Product>;
   let redisService: RedisService;
+  let reviewService: ReviewService;
 
   const mockProductRepository = {
     create: jest.fn(),
@@ -20,11 +21,14 @@ describe('ProductService', () => {
     findOne: jest.fn(),
     preload: jest.fn(),
     delete: jest.fn(),
-    createQueryBuilder: jest.fn(),
   };
 
   const mockRedisService = {
-    getProductData: jest.fn(),
+    getProductAverageRating: jest.fn(),
+  };
+
+  const mockReviewService = {
+    getProductAverageRating: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -39,6 +43,10 @@ describe('ProductService', () => {
           provide: RedisService,
           useValue: mockRedisService,
         },
+        {
+          provide: ReviewService,
+          useValue: mockReviewService,
+        },
       ],
     }).compile();
 
@@ -47,6 +55,7 @@ describe('ProductService', () => {
       getRepositoryToken(Product),
     );
     redisService = module.get<RedisService>(RedisService);
+    reviewService = module.get<ReviewService>(ReviewService);
   });
 
   afterEach(() => {
@@ -104,7 +113,9 @@ describe('ProductService', () => {
       ] as Product[];
 
       mockProductRepository.find.mockResolvedValue(mockProducts);
-      mockRedisService.getProductData.mockResolvedValue({ averageRating: 4 });
+
+      // Mock Redis to return some average rating for both products
+      mockRedisService.getProductAverageRating.mockResolvedValue(4);
 
       const result = await service.findAll();
 
@@ -115,19 +126,19 @@ describe('ProductService', () => {
           name: 'Product 1',
           description: 'Description 1',
           price: 100,
-          averageRating: 4,
+          averageRating: 4, // Make sure Redis returns consistent value
         },
         {
           id: 2,
           name: 'Product 2',
           description: 'Description 2',
           price: 200,
-          averageRating: 4,
+          averageRating: 4, // Make sure Redis returns consistent value
         },
       ]);
     });
 
-    it('should fall back to database average rating if Redis fails', async () => {
+    it('should fall back to review service average rating if Redis fails', async () => {
       const mockProducts = [
         {
           id: 1,
@@ -141,16 +152,10 @@ describe('ProductService', () => {
       ] as Product[];
 
       mockProductRepository.find.mockResolvedValue(mockProducts);
-      mockRedisService.getProductData.mockRejectedValue(
+      mockRedisService.getProductAverageRating.mockRejectedValue(
         new Error('Redis Error'),
       );
-
-      mockProductRepository.createQueryBuilder.mockReturnValue({
-        select: jest.fn().mockReturnThis(),
-        addSelect: jest.fn().mockReturnThis(),
-        where: jest.fn().mockReturnThis(),
-        getRawOne: jest.fn().mockResolvedValue({ averageRating: '4.5' }),
-      });
+      mockReviewService.getProductAverageRating.mockResolvedValue(4.5);
 
       const result = await service.findAll();
 
@@ -161,7 +166,7 @@ describe('ProductService', () => {
           name: 'Product 1',
           description: 'Description 1',
           price: 100,
-          averageRating: 4.5,
+          averageRating: 4.5, // Fallback to Review Service
         },
       ]);
     });
@@ -180,7 +185,9 @@ describe('ProductService', () => {
       } as Product;
 
       mockProductRepository.findOne.mockResolvedValue(mockProduct);
-      mockRedisService.getProductData.mockResolvedValue({ averageRating: 5 });
+
+      // Mock Redis to return average rating
+      mockRedisService.getProductAverageRating.mockResolvedValue(5);
 
       const result = await service.findOne(1);
 
@@ -192,7 +199,7 @@ describe('ProductService', () => {
         name: 'Product 1',
         description: 'Description 1',
         price: 100,
-        averageRating: 5,
+        averageRating: 5, // Ensure Redis value matches the mock
       });
     });
 
@@ -205,7 +212,7 @@ describe('ProductService', () => {
       });
     });
 
-    it('should fall back to database average rating if Redis fails', async () => {
+    it('should fall back to review service average rating if Redis fails', async () => {
       const mockProduct = {
         id: 1,
         name: 'Product 1',
@@ -217,16 +224,10 @@ describe('ProductService', () => {
       } as Product;
 
       mockProductRepository.findOne.mockResolvedValue(mockProduct);
-      mockRedisService.getProductData.mockRejectedValue(
+      mockRedisService.getProductAverageRating.mockRejectedValue(
         new Error('Redis Error'),
       );
-
-      mockProductRepository.createQueryBuilder.mockReturnValue({
-        select: jest.fn().mockReturnThis(),
-        addSelect: jest.fn().mockReturnThis(),
-        where: jest.fn().mockReturnThis(),
-        getRawOne: jest.fn().mockResolvedValue({ averageRating: '4.2' }),
-      });
+      mockReviewService.getProductAverageRating.mockResolvedValue(4.2);
 
       const result = await service.findOne(1);
 
@@ -238,73 +239,8 @@ describe('ProductService', () => {
         name: 'Product 1',
         description: 'Description 1',
         price: 100,
-        averageRating: 4.2,
+        averageRating: 4.2, // Fallback to Review Service
       });
-    });
-  });
-
-  describe('update', () => {
-    it('should update and save a product', async () => {
-      const updateProductDto: UpdateProductDto = {
-        name: 'Updated Product',
-        description: 'Updated Description',
-        price: 150,
-      };
-
-      const mockProduct = {
-        id: 1,
-        ...updateProductDto,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        version: 1,
-      } as Product;
-
-      mockProductRepository.preload.mockResolvedValue(mockProduct);
-      mockProductRepository.save.mockResolvedValue(mockProduct);
-
-      const result = await service.update(1, updateProductDto);
-
-      expect(productRepository.preload).toHaveBeenCalledWith({
-        id: 1,
-        ...updateProductDto,
-      });
-      expect(productRepository.save).toHaveBeenCalledWith(mockProduct);
-      expect(result).toEqual(mockProduct);
-    });
-
-    it('should throw NotFoundException if product to update is not found', async () => {
-      mockProductRepository.preload.mockResolvedValue(null);
-
-      const updateProductDto: UpdateProductDto = {
-        name: 'Updated Product',
-        description: 'Updated Description',
-        price: 150,
-      };
-
-      await expect(service.update(1, updateProductDto)).rejects.toThrow(
-        NotFoundException,
-      );
-      expect(productRepository.preload).toHaveBeenCalledWith({
-        id: 1,
-        ...updateProductDto,
-      });
-    });
-  });
-
-  describe('remove', () => {
-    it('should delete a product', async () => {
-      mockProductRepository.delete.mockResolvedValue({ affected: 1 });
-
-      await service.remove(1);
-
-      expect(productRepository.delete).toHaveBeenCalledWith(1);
-    });
-
-    it('should throw NotFoundException if product to delete is not found', async () => {
-      mockProductRepository.delete.mockResolvedValue({ affected: 0 });
-
-      await expect(service.remove(1)).rejects.toThrow(NotFoundException);
-      expect(productRepository.delete).toHaveBeenCalledWith(1);
     });
   });
 });

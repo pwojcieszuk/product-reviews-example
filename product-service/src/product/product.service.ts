@@ -6,6 +6,7 @@ import { CreateProductDto } from './dto/create-product.dto';
 import { ProductResponseDto } from './dto/product-response.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { RedisService } from 'src/redis/redis.service';
+import { ReviewService } from 'src/review/review.service';
 
 @Injectable()
 export class ProductService {
@@ -13,6 +14,7 @@ export class ProductService {
     @InjectRepository(Product)
     private readonly productRepository: Repository<Product>,
     private readonly redisService: RedisService,
+    private readonly reviewService: ReviewService,
   ) {}
 
   async create(createProductDto: CreateProductDto): Promise<Product> {
@@ -70,14 +72,7 @@ export class ProductService {
   // like a separate service that updates the average rating periodically
   // for the sake of proof of concept we will keep this method as is for now
   private async getProductAverageRating(productId: number): Promise<number> {
-    const result = await this.productRepository
-      .createQueryBuilder('review')
-      .select('AVG(review.rating)', 'averageRating')
-      .addSelect('COUNT(review.id)', 'reviewCount')
-      .where('review.productId = :productId', { productId })
-      .getRawOne();
-
-    return parseFloat(result.averageRating) || 0;
+    return this.reviewService.getProductAverageRating(productId);
   }
 
   private async mapProductToResponseDto(
@@ -85,8 +80,9 @@ export class ProductService {
   ): Promise<ProductResponseDto> {
     let averageRating: number | undefined;
     try {
-      const productData = await this.redisService.getProductData(product.id);
-      averageRating = productData.averageRating;
+      averageRating = await this.redisService.getProductAverageRating(
+        product.id,
+      );
     } catch (error) {
       // Ignore Redis errors and return undefined average rating
       console.error('Failed to fetch product data from Redis', error);

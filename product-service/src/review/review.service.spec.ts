@@ -7,7 +7,6 @@ import { Product } from 'src/product/entities/product.entity';
 import { NotFoundException } from '@nestjs/common';
 import { Producer } from 'kafkajs';
 import { ConfigService } from '@nestjs/config';
-import { mock } from 'node:test';
 
 const mockReviewRepository = {
   create: jest.fn(),
