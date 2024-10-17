@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { RedisService } from '../redis/redis.service';
-import { DatabaseService } from '../database/database.service';
+import { RedisService } from 'src/redis/redis.service';
+import { DatabaseService } from 'src/database/database.service';
 import { type Job } from 'bullmq';
 
 @Injectable()
@@ -19,7 +19,7 @@ export class ReviewService {
 
     if (!averageRating) {
       ({ averageRating, reviewCount } =
-        await this.dbService.getProductReviews(productId));
+        await this.dbService.getProductReviewsStats(productId));
     }
 
     // Recalculate the average rating
@@ -43,7 +43,7 @@ export class ReviewService {
 
     if (!averageRating) {
       ({ averageRating, reviewCount } =
-        await this.dbService.getProductReviews(productId));
+        await this.dbService.getProductReviewsStats(productId));
     }
 
     // Ensure we don't divide by zero
@@ -74,7 +74,7 @@ export class ReviewService {
 
     if (!averageRating) {
       ({ averageRating, reviewCount } =
-        await this.dbService.getProductReviews(productId));
+        await this.dbService.getProductReviewsStats(productId));
     }
 
     // Recalculate the average rating after updating the review

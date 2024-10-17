@@ -38,7 +38,7 @@ describe('DatabaseService', () => {
     jest.clearAllMocks();
   });
 
-  describe('getProductReviews', () => {
+  describe('getProductReviewsStats', () => {
     it('should return the correct averageRating and reviewCount', async () => {
       const productId = 1;
 
@@ -51,7 +51,7 @@ describe('DatabaseService', () => {
         .createQueryBuilder()
         .getRawOne.mockResolvedValue(mockResult);
 
-      const result = await service.getProductReviews(productId);
+      const result = await service.getProductReviewsStats(productId);
 
       expect(reviewRepository.createQueryBuilder).toHaveBeenCalledWith(
         'review',
@@ -71,7 +71,7 @@ describe('DatabaseService', () => {
         .createQueryBuilder()
         .getRawOne.mockResolvedValue(mockResult);
 
-      const result = await service.getProductReviews(productId);
+      const result = await service.getProductReviewsStats(productId);
 
       expect(reviewRepository.createQueryBuilder).toHaveBeenCalledWith(
         'review',

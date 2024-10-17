@@ -15,7 +15,7 @@ describe('ReviewService', () => {
   };
 
   const mockDbService = {
-    getProductReviews: jest.fn(),
+    getProductReviewsStats: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -66,7 +66,7 @@ describe('ReviewService', () => {
         averageRating: 0,
         reviewCount: 0,
       });
-      mockDbService.getProductReviews.mockResolvedValue({
+      mockDbService.getProductReviewsStats.mockResolvedValue({
         averageRating: 4,
         reviewCount: 10,
       });
@@ -74,7 +74,7 @@ describe('ReviewService', () => {
       await service.processReviewAdded(job as Job);
 
       expect(redisService.getProductData).toHaveBeenCalledWith(1);
-      expect(dbService.getProductReviews).toHaveBeenCalledWith(1);
+      expect(dbService.getProductReviewsStats).toHaveBeenCalledWith(1);
       expect(redisService.updateProductData).toHaveBeenCalledWith(
         1,
         4.090909090909091,
@@ -147,7 +147,7 @@ describe('ReviewService', () => {
         averageRating: 0,
         reviewCount: 0,
       });
-      mockDbService.getProductReviews.mockResolvedValue({
+      mockDbService.getProductReviewsStats.mockResolvedValue({
         averageRating: 4,
         reviewCount: 10,
       });
@@ -155,7 +155,7 @@ describe('ReviewService', () => {
       await service.processReviewUpdated(job as Job);
 
       expect(redisService.getProductData).toHaveBeenCalledWith(1);
-      expect(dbService.getProductReviews).toHaveBeenCalledWith(1);
+      expect(dbService.getProductReviewsStats).toHaveBeenCalledWith(1);
       expect(redisService.updateProductData).toHaveBeenCalledWith(1, 4.1, 10);
     });
   });
