@@ -26,7 +26,7 @@ describe('RedisService', () => {
     mockRedis.flushall(); // Clear all Redis data between tests
   });
 
-  describe('getProductData', () => {
+  describe('getProductAverageRating', () => {
     it('should return product data from Redis', async () => {
       const productId = 1;
       await mockRedis.hmset(`product:${productId}`, {
@@ -34,7 +34,7 @@ describe('RedisService', () => {
         reviewCount: '10',
       });
 
-      const result = await service.getProductData(productId);
+      const result = await service.getProductAverageRating(productId);
 
       expect(result).toEqual({ averageRating: 4.5, reviewCount: 10 });
     });
@@ -42,7 +42,7 @@ describe('RedisService', () => {
     it('should return default values if Redis data is missing', async () => {
       const productId = 2;
 
-      const result = await service.getProductData(productId);
+      const result = await service.getProductAverageRating(productId);
 
       expect(result).toEqual({ averageRating: 0, reviewCount: 0 });
     });
